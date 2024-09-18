@@ -39,7 +39,7 @@ def resize_with_padding(image, target_width, target_height, padding_color=(0, 0,
     padded_image[y_offset:y_offset + new_height, x_offset:x_offset + new_width] = resized_image
     return padded_image
 
-def process_images_in_folder(input_folder, output_folder, target_width, target_height, method='padding', padding_color=(0, 0, 0)):
+def process_images_in_folder(input_folder, output_folder, target_width, target_height, compression_percent, method='padding', padding_color=(0, 0, 0)):
     os.makedirs(output_folder, exist_ok=True)
     supported_formats = ('.jpg', '.jpeg', '.png', '.webp')
     
@@ -57,8 +57,16 @@ def process_images_in_folder(input_folder, output_folder, target_width, target_h
             else:
                 raise ValueError("Method must be either 'resize' or 'padding'")
             
-            cv2.imwrite(output_path, processed_image)
-            print(f"Processed and saved: {output_path}")
+            # Handle compression based on image format
+            if filename.lower().endswith(('.jpg', '.jpeg')):
+                compression_params = [cv2.IMWRITE_JPEG_QUALITY, int(compression_percent)]
+            elif filename.lower().endswith('.png'):
+                compression_params = [cv2.IMWRITE_PNG_COMPRESSION, int(compression_percent / 10)]
+            else:
+                compression_params = []  # WebP and others can be handled similarly if needed
+            
+            cv2.imwrite(output_path, processed_image, compression_params)
+            print(f"Processed and saved: {output_path} with {compression_percent}% compression")
 
 def select_folder(title):
     root = Tk()
@@ -78,17 +86,29 @@ def get_size_input(prompt):
         except ValueError:
             print("Invalid input. Please enter a positive integer.")
 
+def get_compression_input(prompt):
+    while True:
+        try:
+            compression = int(input(prompt))
+            if 0 < compression <= 100:
+                return compression
+            else:
+                print("Please enter an integer between 1 and 100.")
+        except ValueError:
+            print("Invalid input. Please enter an integer between 1 and 100.")
+
 # Get input and output folders from the user
 input_folder = select_folder("Select the input folder containing images")
 output_folder = select_folder("Select the output folder to save processed images")
 
-# Get the target width and height from the user
+# Get the target width, height, and compression percentage from the user
 target_width = get_size_input("Enter the target width: ")
 target_height = get_size_input("Enter the target height: ")
+compression_percent = get_compression_input("Enter the compression percentage (1-100): ")
 
 # Define method and padding color
 method = 'padding'  # Choose 'resize' for proportional resize, 'padding' for resize with padding
 padding_color = (255, 255, 255)  # White padding for 'padding' method
 
 # Process all images in the selected input folder
-process_images_in_folder(input_folder, output_folder, target_width, target_height, method, padding_color)
+process_images_in_folder(input_folder, output_folder, target_width, target_height, compression_percent, method, padding_color)
